@@ -18,6 +18,22 @@ push -> browser comment -> pull -> context -> edit -> push v2 -> rebase
 If the embedded player is unavailable, open the demo video directly:
 [docs/assets/demoview.mov](docs/assets/demoview.mov).
 
+## Hosted Preview (add-on)
+
+The live demo runs localhost-first (see Quickstart). As an add-on, the same API
+and review UI are also reachable through a public URL, so a reviewer on another
+machine or network can open the review without a local checkout:
+
+```text
+https://bagel.ippei-matsuda.workers.dev/r/bJ3lEcTrOHXKv8qg1ll1umdhKmmpgs7a
+```
+
+Health check: `https://bagel.ippei-matsuda.workers.dev/health`.
+
+The hosted path is a stable `workers.dev` Worker that proxies to the running
+local server, so the public URL stays constant even if the underlying tunnel is
+re-issued. The localhost loop below remains the primary, canonical demo.
+
 ## Repository Layout
 
 - `apps/api/` - Hono API server, artifact storage, review routes, and iframe bridge delivery.
@@ -119,6 +135,7 @@ See [.docs/security.md](.docs/security.md) for design notes.
 
 ## Current Scope
 
-The MVP targets a reliable localhost demo. Public deployment, SSE, reviewer
-identity, resolve/reopen UI, and polished production hosting are outside the
-current cut line.
+The MVP targets a reliable localhost demo, which remains the primary path. A
+public hosted preview is available as a lightweight add-on (see Hosted Preview).
+Production-grade hosting, SSE, reviewer identity, and resolve/reopen UI remain
+outside the current cut line.
