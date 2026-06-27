@@ -1,3 +1,6 @@
+import { readFile } from 'node:fs/promises';
+import { extname, resolve, sep } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { Hono } from 'hono';
 import { bodyLimit } from 'hono/body-limit';
 import { secureHeaders } from 'hono/secure-headers';
@@ -7,6 +10,9 @@ import { createMemoryStorage, createReviewToken } from './storage.mjs';
 const DEFAULT_BODY_LIMIT_BYTES = 2 * 1024 * 1024;
 const DEFAULT_WORKFLOW_STATUS = 'open';
 const DEFAULT_ANCHOR_STATUS = 'attached';
+const DEFAULT_WEB_DIST_DIR = fileURLToPath(new URL('../../web/dist/', import.meta.url));
+const BRIDGE_SCRIPT_PATH = '/docsync-bridge.js';
+const BRIDGE_SCRIPT_FILE = fileURLToPath(new URL('./review-bridge.js', import.meta.url));
 const ARTIFACT_CSP = [
   "default-src 'none'",
   "script-src 'self'",
@@ -14,10 +20,38 @@ const ARTIFACT_CSP = [
   'img-src data: blob: https:',
   'font-src data: https:',
   "connect-src 'none'",
+  "frame-src 'none'",
   "form-action 'none'",
   "base-uri 'none'",
   "object-src 'none'"
 ].join('; ');
+const REVIEW_APP_CSP = [
+  "default-src 'self'",
+  "script-src 'self'",
+  "style-src 'self'",
+  "connect-src 'self'",
+  "frame-src 'self'",
+  'img-src data: blob: https:',
+  "base-uri 'none'",
+  "object-src 'none'"
+].join('; ');
+const BRIDGE_SCRIPT_CSP = [
+  "default-src 'none'",
+  "script-src 'self'",
+  "base-uri 'none'",
+  "object-src 'none'"
+].join('; ');
+const WEB_ASSET_CONTENT_TYPES = {
+  '.css': 'text/css; charset=utf-8',
+  '.html': 'text/html; charset=utf-8',
+  '.js': 'text/javascript; charset=utf-8',
+  '.map': 'application/json; charset=utf-8',
+  '.svg': 'image/svg+xml',
+  '.png': 'image/png',
+  '.jpg': 'image/jpeg',
+  '.jpeg': 'image/jpeg',
+  '.webp': 'image/webp'
+};
 
 function isRecord(value) {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -130,6 +164,115 @@ function escapeHtmlAttribute(value) {
     .replaceAll('>', '&gt;');
 }
 
+function decodePathSegment(value) {
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    return null;
+  }
+}
+
+async function readWebDistFile(webDistDir, relativePath) {
+  const root = resolve(webDistDir);
+  const filePath = resolve(root, relativePath);
+  if (filePath !== root && !filePath.startsWith(`${root}${sep}`)) {
+    return null;
+  }
+
+  try {
+    return {
+      body: await readFile(filePath),
+      contentType: WEB_ASSET_CONTENT_TYPES[extname(filePath)] ?? 'application/octet-stream'
+    };
+  } catch (error) {
+    if (error && error.code === 'ENOENT') {
+      return null;
+    }
+    throw error;
+  }
+}
+
+function validateArtifactHtml(html) {
+  if (/<script\b/i.test(html)) {
+    return 'Artifact contains a <script> tag.';
+  }
+
+  if (/\bon[a-z]+\s*=/i.test(html)) {
+    return 'Artifact contains an inline event handler.';
+  }
+
+  if (/<\s*(iframe|object|embed|form)\b/i.test(html)) {
+    return 'Artifact contains a forbidden embedded element.';
+  }
+
+  if (/javascript\s*:/i.test(html)) {
+    return 'Artifact contains a javascript: URL.';
+  }
+
+  return null;
+}
+
+function stripUnsafePreviewHtml(html) {
+  return html
+    .replace(/<script\b[\s\S]*?<\/script\s*>/giu, '')
+    .replace(/<\s*(iframe|object|embed|form)\b[\s\S]*?<\/\s*\1\s*>/giu, '')
+    .replace(/<\s*(iframe|object|embed|form|base)\b[^>]*\/?>/giu, '')
+    .replace(/<meta\b[^>]*http-equiv\s*=\s*["']?content-security-policy["']?[^>]*>/giu, '')
+    .replace(/\s+on[a-z]+\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+)/giu, '')
+    .replace(
+      /\s+(href|src|action|formaction|xlink:href)\s*=\s*(?:"\s*javascript:[^"]*"|'\s*javascript:[^']*'|\s*javascript:[^\s>]*)/giu,
+      ''
+    );
+}
+
+function bridgeStyleTag() {
+  return `<style data-docsync-bridge="true">
+    [data-docsync-selected="true"] {
+      outline: 3px solid #0f766e !important;
+      outline-offset: 3px !important;
+    }
+
+    [data-docsync-hover="true"] {
+      outline: 2px dashed #f59e0b !important;
+      outline-offset: 3px !important;
+      cursor: crosshair !important;
+    }
+  </style>`;
+}
+
+function bridgeScriptTag({ revisionId, bridgeNonce }) {
+  return `<script src="${BRIDGE_SCRIPT_PATH}" data-docsync-revision-id="${escapeHtmlAttribute(
+    revisionId
+  )}" data-docsync-bridge-nonce="${escapeHtmlAttribute(bridgeNonce)}" defer></script>`;
+}
+
+function injectBeforeClosingTag(html, tagName, content) {
+  const pattern = new RegExp(`</${tagName}\\s*>`, 'iu');
+  if (pattern.test(html)) {
+    return html.replace(pattern, `${content}</${tagName}>`);
+  }
+
+  return `${html}${content}`;
+}
+
+function instrumentArtifactHtml(html, { revisionId, bridgeNonce }) {
+  let nextHtml = stripUnsafePreviewHtml(html);
+  nextHtml = injectBeforeClosingTag(nextHtml, 'head', bridgeStyleTag());
+  nextHtml = injectBeforeClosingTag(
+    nextHtml,
+    'body',
+    bridgeScriptTag({
+      revisionId,
+      bridgeNonce
+    })
+  );
+  return nextHtml;
+}
+
+function isBridgeNonce(value) {
+  return typeof value === 'string' && /^[a-f0-9]{32}$/u.test(value);
+}
+
 function validateCreateCommentBody(body) {
   const workflowStatus = body.workflowStatus ?? DEFAULT_WORKFLOW_STATUS;
   const anchorStatus = body.anchorStatus ?? DEFAULT_ANCHOR_STATUS;
@@ -214,6 +357,7 @@ export function createApp(options = {}) {
   const storage = options.storage ?? createMemoryStorage();
   const tokenGenerator = options.tokenGenerator ?? createReviewToken;
   const now = options.now ?? (() => new Date().toISOString());
+  const webDistDir = options.webDistDir ?? DEFAULT_WEB_DIST_DIR;
   const app = new Hono();
 
   app.use('*', secureHeaders());
@@ -233,23 +377,64 @@ export function createApp(options = {}) {
     })
   );
 
-  app.get('/r/:reviewToken', (c) => {
+  app.get('/r/:reviewToken', async (c) => {
     const reviewToken = c.req.param('reviewToken');
     const bundle = storage.getReviewBundle(reviewToken);
     if (!bundle) {
       return jsonError(c, 404, 'review_not_found', 'Review token was not found.');
     }
 
-    return c.html(`<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="utf-8">
-    <title>Docksync Review</title>
-  </head>
-  <body>
-    <main id="docsync-review-root" data-review-token="${escapeHtmlAttribute(reviewToken)}"></main>
-  </body>
-</html>`);
+    const index = await readWebDistFile(webDistDir, 'index.html');
+    if (!index) {
+      return jsonError(c, 503, 'review_app_unavailable', 'Review UI build was not found.');
+    }
+
+    return new Response(index.body, {
+      status: 200,
+      headers: {
+        'content-type': index.contentType,
+        'cache-control': 'no-store',
+        'content-security-policy': REVIEW_APP_CSP
+      }
+    });
+  });
+
+  app.get(BRIDGE_SCRIPT_PATH, async () => {
+    const body = await readFile(BRIDGE_SCRIPT_FILE);
+    return new Response(body, {
+      status: 200,
+      headers: {
+        'content-type': 'text/javascript; charset=utf-8',
+        'cache-control': 'no-store',
+        'content-security-policy': BRIDGE_SCRIPT_CSP
+      }
+    });
+  });
+
+  app.get('/assets/*', async (c) => {
+    const assetPath = decodePathSegment(c.req.path.slice('/assets/'.length));
+    if (
+      !assetPath ||
+      assetPath.includes('\0') ||
+      assetPath.startsWith('/') ||
+      assetPath.startsWith('\\') ||
+      assetPath.split(/[\\/]/u).includes('..')
+    ) {
+      return jsonError(c, 404, 'asset_not_found', 'Review UI asset was not found.');
+    }
+
+    const asset = await readWebDistFile(webDistDir, `assets/${assetPath}`);
+    if (!asset) {
+      return jsonError(c, 404, 'asset_not_found', 'Review UI asset was not found.');
+    }
+
+    return new Response(asset.body, {
+      status: 200,
+      headers: {
+        'content-type': asset.contentType,
+        'cache-control': 'public, max-age=31536000, immutable'
+      }
+    });
   });
 
   app.post('/api/projects', async (c) => {
@@ -319,6 +504,11 @@ export function createApp(options = {}) {
       return jsonError(c, 400, 'invalid_request', 'html is required.');
     }
 
+    const securityError = validateArtifactHtml(body.html);
+    if (securityError) {
+      return jsonError(c, 400, 'unsafe_artifact', securityError);
+    }
+
     if (body.parentRevisionId !== undefined && typeof body.parentRevisionId !== 'string') {
       return jsonError(c, 400, 'invalid_request', 'parentRevisionId must be a string.');
     }
@@ -376,6 +566,11 @@ export function createApp(options = {}) {
   });
 
   app.get('/api/reviews/:reviewToken/revisions/:revisionId/artifact', (c) => {
+    const bridgeNonce = c.req.query('bridgeNonce');
+    if (bridgeNonce !== undefined && !isBridgeNonce(bridgeNonce)) {
+      return jsonError(c, 400, 'invalid_bridge_nonce', 'A valid bridge nonce is required.');
+    }
+
     const result = storage.getArtifactForReview(
       c.req.param('reviewToken'),
       c.req.param('revisionId')
@@ -384,7 +579,14 @@ export function createApp(options = {}) {
       return jsonError(c, 404, 'artifact_not_found', 'Artifact was not found.');
     }
 
-    return new Response(result.html, {
+    const html = bridgeNonce
+      ? instrumentArtifactHtml(result.html, {
+          revisionId: result.revision.id,
+          bridgeNonce
+        })
+      : stripUnsafePreviewHtml(result.html);
+
+    return new Response(html, {
       status: 200,
       headers: {
         'content-type': 'text/html; charset=utf-8',

@@ -28,11 +28,11 @@ Must
 
 ## Checklist
 
-- [ ] `examples/spec.html` を `docsync push` 相当で API に登録する。
-- [ ] `/r/:reviewToken` で iframe に HTML を表示する。
-- [ ] hard-coded でもよいので 1 comment を API に保存する。
-- [ ] `docsync pull` 相当で local comments JSON に取り込む。
-- [ ] `context.md` にその comment を出力する。
+- [x] `examples/spec.html` を `docsync push` 相当で API に登録する。
+- [x] `/r/:reviewToken` で iframe に HTML を表示する。
+- [x] hard-coded でもよいので 1 comment を API に保存する。
+- [x] `docsync pull` 相当で local comments JSON に取り込む。
+- [x] `context.md` にその comment を出力する。
 
 ## Acceptance
 
@@ -44,3 +44,10 @@ Must
 ## Notes
 
 死守: 最小E2E貫通。Cut可: DOM selection、real rebase、resolve/reopen、見た目の polish。
+
+## Completion Notes
+
+- Added `tests/walking-skeleton-e2e.test.mjs` to prove the integration path:
+  `docsync push` -> `/r/:reviewToken` review shell -> API comment create -> `docsync pull` -> `docsync context --open-comments`.
+- The generated `context.md` includes selector, text quote, heading path, comment body, and suggested instruction.
+- Verified with `npm test`, `npm run build`, `npm run lint`, and a manual local API + CLI E2E using `examples/spec.html`.

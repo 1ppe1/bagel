@@ -33,6 +33,14 @@
         background: #eef2ff;
         font-size: 14px;
       }
+
+      .demo-note {
+        margin-top: 24px;
+        border-left: 4px solid #0f766e;
+        padding: 12px 16px;
+        background: #ecfdf5;
+        color: #134e4a;
+      }
     </style>
   </head>
   <body>
@@ -41,6 +49,9 @@
       <h1 data-docsync-id="hero-title">Docksync turns review comments into agent context.</h1>
       <p data-docsync-id="hero-summary">
         Publish a local HTML artifact, collect comments in the browser, and pull them back into a coding agent workflow.
+      </p>
+      <p class="demo-note" data-docsync-id="demo-instruction">
+        Demo operator note: click the headline, workflow list, or Anchor Rebase section to create a review comment.
       </p>
 
       <section data-docsync-id="workflow">
@@ -56,6 +67,9 @@
         <h2>Anchor Rebase</h2>
         <p>
           Existing comments should reattach to matching DOM elements after a safe edit, or become orphaned when the target disappears.
+        </p>
+        <p>
+          For the orphan demo, remove this entire section and push the file again.
         </p>
       </section>
     </main>
