@@ -11,6 +11,13 @@ The MVP proves this loop:
 push -> browser comment -> pull -> context -> edit -> push v2 -> rebase
 ```
 
+## Demo
+
+<video src="docs/assets/demoview.mov" controls width="100%"></video>
+
+If the embedded player is unavailable, open the demo video directly:
+[docs/assets/demoview.mov](docs/assets/demoview.mov).
+
 ## Repository Layout
 
 - `apps/api/` - Hono API server, artifact storage, review routes, and iframe bridge delivery.

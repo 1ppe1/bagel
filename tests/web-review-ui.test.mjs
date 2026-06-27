@@ -79,7 +79,7 @@ describe('web review UI', () => {
     assert.match(appSource, /No comments yet/);
   });
 
-  it('serves instrumented artifacts with strict CSP and the static bridge script', async () => {
+  it('serves instrumented artifacts with strict CSP and a nonce-scoped bridge script', async () => {
     const app = createApp();
     const createResponse = await app.request('/api/projects', {
       method: 'POST',
@@ -119,11 +119,13 @@ describe('web review UI', () => {
     assert.equal(artifactResponse.status, 200);
     const artifactCsp = artifactResponse.headers.get('content-security-policy');
     assert.match(artifactCsp, /default-src 'none'/);
-    assert.match(artifactCsp, /script-src 'self'/);
+    assert.match(artifactCsp, /script-src 'self' 'nonce-0123456789abcdef0123456789abcdef'/);
     assert.doesNotMatch(artifactCsp, /script-src[^;]*unsafe-inline/);
 
     const html = await artifactResponse.text();
-    assert.match(html, /src="\/docsync-bridge\.js"/);
+    assert.doesNotMatch(html, /src="\/docsync-bridge\.js"/);
+    assert.match(html, new RegExp(`nonce="${bridgeNonce}"`));
+    assert.match(html, /docsync:element-selected/);
     assert.match(html, new RegExp(`data-docsync-bridge-nonce="${bridgeNonce}"`));
     assert.match(html, new RegExp(`data-docsync-revision-id="${revision.id}"`));
   });
