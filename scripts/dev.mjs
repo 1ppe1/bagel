@@ -2,7 +2,7 @@ import { spawn } from 'node:child_process';
 
 const processes = [
   ['api', 'node', ['apps/api/src/server.mjs']],
-  ['web', 'node', ['apps/web/src/server.mjs']]
+  ['web', 'npm', ['run', 'dev', '-w', '@docsync/web']]
 ];
 
 let shuttingDown = false;

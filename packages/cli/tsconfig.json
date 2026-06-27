@@ -4,7 +4,8 @@
     "composite": true,
     "rootDir": "src",
     "outDir": "dist",
-    "declarationMap": true
+    "declarationMap": true,
+    "types": ["node"]
   },
   "include": [
     "src/**/*.ts"

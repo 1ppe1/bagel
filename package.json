@@ -13,13 +13,14 @@
   "scripts": {
     "dev": "npm run build && node scripts/dev.mjs",
     "dev:api": "npm run build && node apps/api/src/server.mjs",
-    "dev:web": "node apps/web/src/server.mjs",
-    "docsync": "node packages/cli/bin/docsync.mjs",
+    "dev:web": "npm run dev -w @docsync/web",
+    "docsync": "npm run build && node packages/cli/bin/docsync.mjs",
     "test": "npm run build && node --test tests/*.test.mjs",
-    "build": "tsc -b && node scripts/check-scaffold.mjs",
+    "build": "tsc -b && npm run build -w @docsync/web && node scripts/check-scaffold.mjs",
     "lint": "npm run build"
   },
   "devDependencies": {
+    "@types/node": "^26.0.1",
     "typescript": "^6.0.3"
   }
 }

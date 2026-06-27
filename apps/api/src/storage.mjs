@@ -1,6 +1,7 @@
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import { mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
 import { dirname } from 'node:path';
+import { rebaseAnchor } from '@docsync/core';
 
 export function hashString(value) {
   return `sha256:${createHash('sha256').update(value).digest('hex')}`;
@@ -112,6 +113,37 @@ function createStorage({ idGenerator, state, persist }) {
     persist(state);
   }
 
+  function rebaseOpenComments({ review, revision, html, now }) {
+    const commentIds = commentIdsByReviewId.get(review.id) ?? [];
+    for (const commentId of commentIds) {
+      const comment = commentsById.get(commentId);
+      if (!comment || comment.workflowStatus !== 'open') {
+        continue;
+      }
+
+      const rebaseOutput = rebaseAnchor(comment.anchor, html);
+      const rebaseResult = {
+        fromRevisionId: comment.revisionId,
+        toRevisionId: revision.id,
+        status: rebaseOutput.status,
+        confidence: rebaseOutput.confidence,
+        reasons: rebaseOutput.reasons,
+        createdAt: now
+      };
+      setIfDefined(rebaseResult, 'matchedSelector', rebaseOutput.matchedSelector);
+
+      const updated = {
+        ...comment,
+        revisionId: revision.id,
+        anchorStatus: rebaseOutput.status,
+        rebaseHistory: [...comment.rebaseHistory, rebaseResult],
+        updatedAt: now
+      };
+      setIfDefined(updated, 'anchor', rebaseOutput.anchor);
+      commentsById.set(comment.id, updated);
+    }
+  }
+
   function resolveReviewToken(reviewToken) {
     const reviewId = reviewIdsByTokenHash.get(hashString(reviewToken));
     if (!reviewId) {
@@ -205,6 +237,7 @@ function createStorage({ idGenerator, state, persist }) {
 
       project.updatedAt = now;
       review.updatedAt = now;
+      rebaseOpenComments({ review, revision, html, now });
       save();
 
       return { project, review, revision };
