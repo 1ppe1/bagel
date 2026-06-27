@@ -1,0 +1,12 @@
+{
+  "name": "@docsync/cli",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "bin": {
+    "docsync": "./bin/docsync.mjs"
+  },
+  "scripts": {
+    "dev": "node bin/docsync.mjs --help"
+  }
+}

@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Docksync MVP Spec</title>
+    <style>
+      body {
+        margin: 0;
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        color: #111827;
+        background: #f9fafb;
+      }
+
+      main {
+        max-width: 840px;
+        margin: 0 auto;
+        padding: 48px 24px;
+      }
+
+      section {
+        margin-top: 32px;
+        padding-top: 24px;
+        border-top: 1px solid #e5e7eb;
+      }
+
+      .status {
+        display: inline-block;
+        border: 1px solid #c7d2fe;
+        border-radius: 999px;
+        padding: 4px 10px;
+        color: #3730a3;
+        background: #eef2ff;
+        font-size: 14px;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <p class="status">MVP Review Fixture</p>
+      <h1 data-docsync-id="hero-title">Docksync turns review comments into agent context.</h1>
+      <p data-docsync-id="hero-summary">
+        Publish a local HTML artifact, collect comments in the browser, and pull them back into a coding agent workflow.
+      </p>
+
+      <section data-docsync-id="workflow">
+        <h2>Workflow</h2>
+        <ol>
+          <li>Push a single HTML file.</li>
+          <li>Review the rendered artifact in a sandboxed iframe.</li>
+          <li>Pull open comments into local context.</li>
+        </ol>
+      </section>
+
+      <section data-docsync-id="anchor-rebase">
+        <h2>Anchor Rebase</h2>
+        <p>
+          Existing comments should reattach to matching DOM elements after a safe edit, or become orphaned when the target disappears.
+        </p>
+      </section>
+    </main>
+  </body>
+</html>
