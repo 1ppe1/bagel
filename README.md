@@ -7,8 +7,10 @@ HTML revisions with Anchor Rebase.
 
 The MVP proves this loop:
 
-```text
-push -> browser comment -> pull -> context -> edit -> push v2 -> rebase
+```mermaid
+flowchart LR
+    A[push] --> B[browser comment] --> C[pull] --> D[context] --> E[edit] --> F[push v2] --> G[rebase]
+    G -. next revision .-> B
 ```
 
 ## Demo
