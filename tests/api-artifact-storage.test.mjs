@@ -4,6 +4,7 @@ import { createHash } from 'node:crypto';
 import { mkdtemp, readFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { extractCompositeAnchors } from '@docsync/core';
 import { createApp } from '../apps/api/src/app.mjs';
 import { createJsonFileStorage, createMemoryStorage } from '../apps/api/src/storage.mjs';
 
@@ -242,6 +243,58 @@ describe('API artifact storage', () => {
     const { comment } = await json(response);
     assert.equal(comment.workflowStatus, 'open');
     assert.equal(comment.anchorStatus, 'needs_review');
+  });
+
+  it('rebases open comments on new revisions without changing workflow status', async () => {
+    const { app } = createTestApi();
+    const { project, reviewToken } = await createProject(app);
+    const v1 =
+      '<!doctype html><main><h1>Spec</h1><section data-docsync-id="anchor-rebase"><h2>Anchor Rebase</h2><p>Existing comments should reattach after a safe edit.</p></section></main>';
+    const v2 =
+      '<!doctype html><main><h1>Spec</h1><section data-docsync-id="anchor-rebase"><h2>Anchor Rebase</h2><p>Existing comments should reattach after a safe copy edit.</p></section></main>';
+    const v3 = '<!doctype html><main><h1>Spec</h1><section><h2>Different</h2></section></main>';
+    const { revision: firstRevision } = await createRevision(app, project.id, reviewToken, v1);
+    const anchor = extractCompositeAnchors(v1).find(
+      (candidate) => candidate.stableId === 'anchor-rebase'
+    );
+    assert.ok(anchor, 'expected anchor-rebase anchor');
+
+    const createCommentResponse = await app.request(`/api/reviews/${reviewToken}/comments`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json'
+      },
+      body: JSON.stringify({
+        revisionId: firstRevision.id,
+        body: 'Keep this attached through safe edits.',
+        anchor
+      })
+    });
+    assert.equal(createCommentResponse.status, 201);
+    const { comment } = await json(createCommentResponse);
+    assert.equal(comment.workflowStatus, 'open');
+    assert.equal(comment.anchorStatus, 'attached');
+
+    const { revision: secondRevision } = await createRevision(app, project.id, reviewToken, v2);
+    const attachedResponse = await app.request(`/api/reviews/${reviewToken}/comments`);
+    const { comments: attachedComments } = await json(attachedResponse);
+    assert.equal(attachedComments[0].workflowStatus, 'open');
+    assert.equal(attachedComments[0].anchorStatus, 'attached');
+    assert.equal(attachedComments[0].revisionId, secondRevision.id);
+    assert.equal(attachedComments[0].anchor.stableId, 'anchor-rebase');
+    assert.equal(attachedComments[0].rebaseHistory.length, 1);
+    assert.equal(attachedComments[0].rebaseHistory[0].status, 'attached');
+    assert.ok(attachedComments[0].rebaseHistory[0].reasons.includes('matched data-docsync-id'));
+
+    const { revision: thirdRevision } = await createRevision(app, project.id, reviewToken, v3);
+    const orphanedResponse = await app.request(`/api/reviews/${reviewToken}/comments`);
+    const { comments: orphanedComments } = await json(orphanedResponse);
+    assert.equal(orphanedComments[0].workflowStatus, 'open');
+    assert.equal(orphanedComments[0].anchorStatus, 'orphaned');
+    assert.equal(orphanedComments[0].revisionId, thirdRevision.id);
+    assert.equal(orphanedComments[0].anchor.stableId, 'anchor-rebase');
+    assert.equal(orphanedComments[0].rebaseHistory.length, 2);
+    assert.equal(orphanedComments[0].rebaseHistory[1].status, 'orphaned');
   });
 
   it('patches body, workflow status, and anchor status without collapsing the two status axes', async () => {
