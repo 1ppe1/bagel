@@ -1,4 +1,5 @@
 import { readFile } from 'node:fs/promises';
+import { readFileSync } from 'node:fs';
 import { extname, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { Hono } from 'hono';
@@ -13,25 +14,14 @@ const DEFAULT_ANCHOR_STATUS = 'attached';
 const DEFAULT_WEB_DIST_DIR = fileURLToPath(new URL('../../web/dist/', import.meta.url));
 const BRIDGE_SCRIPT_PATH = '/docsync-bridge.js';
 const BRIDGE_SCRIPT_FILE = fileURLToPath(new URL('./review-bridge.js', import.meta.url));
-const ARTIFACT_CSP = [
-  "default-src 'none'",
-  "script-src 'self'",
-  "style-src 'unsafe-inline'",
-  'img-src data: blob: https:',
-  'font-src data: https:',
-  "connect-src 'none'",
-  "frame-src 'none'",
-  "form-action 'none'",
-  "base-uri 'none'",
-  "object-src 'none'"
-].join('; ');
+const BRIDGE_SCRIPT_BODY = readFileSync(BRIDGE_SCRIPT_FILE, 'utf8');
 const REVIEW_APP_CSP = [
   "default-src 'self'",
   "script-src 'self'",
   "style-src 'self'",
   "connect-src 'self'",
   "frame-src 'self'",
-  'img-src data: blob: https:',
+  "img-src 'self' data: blob: https:",
   "base-uri 'none'",
   "object-src 'none'"
 ].join('; ');
@@ -240,10 +230,34 @@ function bridgeStyleTag() {
   </style>`;
 }
 
+function artifactCsp(bridgeNonce) {
+  const scriptSource = bridgeNonce ? `script-src 'self' 'nonce-${bridgeNonce}'` : "script-src 'self'";
+  return [
+    "default-src 'none'",
+    scriptSource,
+    "style-src 'unsafe-inline'",
+    'img-src data: blob: https:',
+    'font-src data: https:',
+    "connect-src 'none'",
+    "frame-src 'none'",
+    "form-action 'none'",
+    "base-uri 'none'",
+    "object-src 'none'"
+  ].join('; ');
+}
+
+function scriptContentForHtml(scriptBody) {
+  return scriptBody.replace(/<\/script/giu, '<\\/script');
+}
+
 function bridgeScriptTag({ revisionId, bridgeNonce }) {
-  return `<script src="${BRIDGE_SCRIPT_PATH}" data-docsync-revision-id="${escapeHtmlAttribute(
+  return `<script nonce="${escapeHtmlAttribute(
+    bridgeNonce
+  )}" data-docsync-revision-id="${escapeHtmlAttribute(
     revisionId
-  )}" data-docsync-bridge-nonce="${escapeHtmlAttribute(bridgeNonce)}" defer></script>`;
+  )}" data-docsync-bridge-nonce="${escapeHtmlAttribute(bridgeNonce)}">${scriptContentForHtml(
+    BRIDGE_SCRIPT_BODY
+  )}</script>`;
 }
 
 function injectBeforeClosingTag(html, tagName, content) {
@@ -407,6 +421,21 @@ export function createApp(options = {}) {
         'content-type': 'text/javascript; charset=utf-8',
         'cache-control': 'no-store',
         'content-security-policy': BRIDGE_SCRIPT_CSP
+      }
+    });
+  });
+
+  app.get('/app-icon.png', async (c) => {
+    const icon = await readWebDistFile(webDistDir, 'app-icon.png');
+    if (!icon) {
+      return jsonError(c, 404, 'asset_not_found', 'App icon was not found.');
+    }
+
+    return new Response(icon.body, {
+      status: 200,
+      headers: {
+        'content-type': icon.contentType,
+        'cache-control': 'public, max-age=86400'
       }
     });
   });
@@ -591,7 +620,7 @@ export function createApp(options = {}) {
       headers: {
         'content-type': 'text/html; charset=utf-8',
         'cache-control': 'no-store',
-        'content-security-policy': ARTIFACT_CSP
+        'content-security-policy': artifactCsp(bridgeNonce)
       }
     });
   });
