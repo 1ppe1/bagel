@@ -29,7 +29,7 @@ Rules:
 Recommended iframe:
 
 ```html
-<iframe sandbox="allow-scripts" src="/api/reviews/:reviewId/revisions/:revisionId/artifact"></iframe>
+<iframe sandbox="allow-scripts" src="/api/reviews/:reviewToken/revisions/:revisionId/artifact"></iframe>
 ```
 
 The only script that should run in MVP is the injected Docksync bridge script. If user HTML contains `<script>` or inline event handlers, reject it during pre-push checks.

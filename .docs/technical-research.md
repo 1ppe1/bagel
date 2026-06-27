@@ -66,7 +66,7 @@ MVP 推奨:
 ```html
 <iframe
   sandbox="allow-scripts"
-  src="/api/reviews/:reviewId/revisions/:revisionId/artifact"
+  src="/api/reviews/:reviewToken/revisions/:revisionId/artifact"
 ></iframe>
 ```
 

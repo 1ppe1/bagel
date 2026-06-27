@@ -11,8 +11,8 @@
     "packages/*"
   ],
   "scripts": {
-    "dev": "node scripts/dev.mjs",
-    "dev:api": "node apps/api/src/server.mjs",
+    "dev": "npm run build && node scripts/dev.mjs",
+    "dev:api": "npm run build && node apps/api/src/server.mjs",
     "dev:web": "node apps/web/src/server.mjs",
     "docsync": "node packages/cli/bin/docsync.mjs",
     "test": "npm run build && node --test tests/*.test.mjs",

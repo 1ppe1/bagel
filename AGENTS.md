@@ -18,8 +18,8 @@ Keep new documentation in `.docs/` unless it is a top-level contributor or proje
 
 Use npm workspaces from the repository root.
 
-- `npm run dev` starts the API and web scaffold together.
-- `npm run dev:api` starts the API scaffold on `http://localhost:8787`.
+- `npm run dev` builds packages, then starts the API and web scaffold together.
+- `npm run dev:api` builds packages, then starts the API scaffold on `http://localhost:8787`.
 - `npm run dev:web` starts the web scaffold on `http://localhost:5173`.
 - `npm test` runs `npm run build` first, then the Node test suite.
 - `npm run build` runs `tsc -b` and then checks scaffolded files.

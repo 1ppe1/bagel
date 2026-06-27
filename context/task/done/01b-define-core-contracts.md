@@ -28,13 +28,13 @@ Must
 
 ## Checklist
 
-- [ ] `Project`, `Review`, `Revision`, `Comment`, `CompositeAnchor`, `RebaseResult` の型を定義する。
-- [ ] comment status を `workflowStatus` と `anchorStatus` の二軸で定義する。
-- [ ] MVP では `workflowStatus` default `open`、resolve/reopen UI は Cuttable と明記する。
-- [ ] `reviewToken` 契約を定義する: URL/API は raw token、server storage は token hash から internal `reviewId` に解決する。
-- [ ] API request/response の mock JSON を用意する。
-- [ ] `context.md` 生成に必要な fields を定義する。
-- [ ] `@docsync/core` を package exports 経由で runtime import できることを確認する。
+- [x] `Project`, `Review`, `Revision`, `Comment`, `CompositeAnchor`, `RebaseResult` の型を定義する。
+- [x] comment status を `workflowStatus` と `anchorStatus` の二軸で定義する。
+- [x] MVP では `workflowStatus` default `open`、resolve/reopen UI は Cuttable と明記する。
+- [x] `reviewToken` 契約を定義する: URL/API は raw token、server storage は token hash から internal `reviewId` に解決する。
+- [x] API request/response の mock JSON を用意する。
+- [x] `context.md` 生成に必要な fields を定義する。
+- [x] `@docsync/core` を package exports 経由で runtime import できることを確認する。
 
 ## Acceptance
 
@@ -47,3 +47,9 @@ Must
 ## Notes
 
 死守: core contracts、reviewToken契約、status二軸。Cut可: 厳密な runtime validation。必要なら最初は TypeScript type と fixture JSON だけでよい。
+
+## Completion Notes
+
+- `packages/core` に MVP domain types、status constants、request/response contracts、`mockCreateProjectResponse` を追加。
+- `reviewToken` は raw token を URL/API で使い、server storage では hash して internal `reviewId` に解決する契約に統一。
+- `npm run build` により `tsc -b` と package exports 経由の runtime import を確認。
