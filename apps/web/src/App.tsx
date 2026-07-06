@@ -6,6 +6,7 @@ import {
   getReviewDetails,
   listComments,
   listRevisions,
+  updateComment,
   type ReviewDetailsResponse
 } from './api.ts';
 import {
@@ -31,6 +32,8 @@ const anchorStatusLabels: Record<AnchorStatus, string> = {
   orphaned: 'Orphaned'
 };
 
+const REVIEWER_NAME_KEY = 'bagel.reviewerName';
+
 export function App() {
   const reviewToken = useMemo(() => reviewTokenFromPath(window.location.pathname), []);
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
@@ -46,8 +49,12 @@ export function App() {
   const [selectedElement, setSelectedElement] = useState<SelectedElement | null>(null);
   const [commentBody, setCommentBody] = useState('');
   const [fixInstruction, setFixInstruction] = useState(false);
+  const [reviewerName, setReviewerName] = useState(
+    () => window.localStorage.getItem(REVIEWER_NAME_KEY) ?? ''
+  );
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [togglingCommentId, setTogglingCommentId] = useState<string | null>(null);
   const [viewTab, setViewTab] = useState<'document' | 'relationships'>('document');
   const { workspace: graphWorkspace } = useWorkspace();
 
@@ -170,10 +177,14 @@ export function App() {
     setIsSubmitting(true);
     setSubmitError(null);
 
+    const authorName = reviewerName.trim();
+    window.localStorage.setItem(REVIEWER_NAME_KEY, authorName);
+
     try {
       await createComment(reviewToken, {
         revisionId: selectedRevision.id,
         body,
+        ...(authorName ? { authorName } : {}),
         fixInstruction,
         workflowStatus: 'open',
         anchorStatus: 'attached',
@@ -186,6 +197,25 @@ export function App() {
       setSubmitError(errorMessage(error, 'Comment could not be added.'));
     } finally {
       setIsSubmitting(false);
+    }
+  }
+
+  async function toggleResolve(comment: Comment) {
+    if (!reviewToken) {
+      return;
+    }
+
+    setTogglingCommentId(comment.id);
+    setCommentsError(null);
+    try {
+      await updateComment(reviewToken, comment.id, {
+        workflowStatus: comment.workflowStatus === 'resolved' ? 'open' : 'resolved'
+      });
+      await refreshComments();
+    } catch (error) {
+      setCommentsError(errorMessage(error, 'Comment could not be updated.'));
+    } finally {
+      setTogglingCommentId(null);
     }
   }
 
@@ -223,7 +253,12 @@ export function App() {
     <main className="review-shell">
       <header className="topbar">
         <div>
-          <p className="eyebrow">Bagel Review</p>
+          <p className="eyebrow">
+            <a className="eyebrow-link" href="/">
+              ← bagel
+            </a>{' '}
+            / Review
+          </p>
           <h1>{details?.review.title ?? 'Review'}</h1>
         </div>
         <div className="review-meta" aria-label="Review metadata">
@@ -277,11 +312,21 @@ export function App() {
             )
           ) : (
             <div className="relationships-pane">
-              <WorkspaceGraph
-                workspace={graphWorkspace}
-                focusId={focusNodeId(graphWorkspace, selectedRevision?.artifactName)}
-                showInspector={false}
-              />
+              {graphWorkspace ? (
+                <WorkspaceGraph
+                  workspace={graphWorkspace}
+                  focusId={focusNodeId(graphWorkspace, selectedRevision?.artifactName)}
+                  showInspector={false}
+                />
+              ) : (
+                <div className="empty-pane">
+                  <h3>No workspace graph yet</h3>
+                  <p>
+                    Push a workspace manifest with <code>./bagel workspace</code> to see how this
+                    artifact relates to the rest of the project.
+                  </p>
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -299,6 +344,18 @@ export function App() {
             <div className="panel-header">
               <h2>Add comment</h2>
             </div>
+            <label className="field-label" htmlFor="reviewer-name">
+              Your name
+            </label>
+            <input
+              id="reviewer-name"
+              className="text-input"
+              type="text"
+              value={reviewerName}
+              onChange={(event) => setReviewerName(event.target.value)}
+              placeholder="e.g. Mori"
+              maxLength={80}
+            />
             <label className="field-label" htmlFor="comment-body">
               Comment
             </label>
@@ -333,7 +390,7 @@ export function App() {
 
           <section className="panel comments-panel">
             <div className="panel-header">
-              <h2>Open comments</h2>
+              <h2>Comments</h2>
               <button
                 className="secondary-action"
                 type="button"
@@ -344,7 +401,11 @@ export function App() {
               </button>
             </div>
             {commentsError ? <p className="inline-error">{commentsError}</p> : null}
-            <CommentList comments={comments} />
+            <CommentList
+              comments={comments}
+              togglingCommentId={togglingCommentId}
+              onToggleResolve={(comment) => void toggleResolve(comment)}
+            />
           </section>
         </aside>
       </section>
@@ -446,7 +507,15 @@ function SelectedElementPreview({ selection }: { selection: SelectedElement | nu
   );
 }
 
-function CommentList({ comments }: { comments: Comment[] }) {
+function CommentList({
+  comments,
+  togglingCommentId,
+  onToggleResolve
+}: {
+  comments: Comment[];
+  togglingCommentId: string | null;
+  onToggleResolve: (comment: Comment) => void;
+}) {
   if (comments.length === 0) {
     return (
       <div className="empty-block">
@@ -457,22 +526,45 @@ function CommentList({ comments }: { comments: Comment[] }) {
 
   return (
     <ol className="comment-list">
-      {comments.map((comment) => (
-        <li className="comment-item" key={comment.id}>
-          <div className="comment-item-header">
-            <div className="comment-badges">
-              {comment.fixInstruction ? <span className="fix-badge">Fix</span> : null}
-              <AnchorStatusBadge status={comment.anchorStatus} />
+      {comments.map((comment) => {
+        const resolved = comment.workflowStatus === 'resolved';
+        return (
+          <li
+            className={resolved ? 'comment-item comment-item-resolved' : 'comment-item'}
+            key={comment.id}
+          >
+            <div className="comment-item-header">
+              <div className="comment-badges">
+                {comment.fixInstruction ? <span className="fix-badge">Fix</span> : null}
+                {resolved ? (
+                  <span className="resolved-badge">✓ Resolved</span>
+                ) : (
+                  <AnchorStatusBadge status={comment.anchorStatus} />
+                )}
+              </div>
+              <time dateTime={comment.createdAt}>{formatDate(comment.createdAt)}</time>
             </div>
-            <time dateTime={comment.createdAt}>{formatDate(comment.createdAt)}</time>
-          </div>
-          <p className="comment-body">{comment.body}</p>
-          <div className="comment-target">
-            <strong>{targetPreview(comment)}</strong>
-            <code>{comment.anchor.selector}</code>
-          </div>
-        </li>
-      ))}
+            <p className="comment-author">{comment.authorName || 'Anonymous'}</p>
+            <p className="comment-body">{comment.body}</p>
+            <div className="comment-target">
+              <strong>{targetPreview(comment)}</strong>
+              <code>{comment.anchor.selector}</code>
+            </div>
+            <button
+              className="secondary-action comment-resolve-btn"
+              type="button"
+              disabled={togglingCommentId === comment.id}
+              onClick={() => onToggleResolve(comment)}
+            >
+              {togglingCommentId === comment.id
+                ? 'Updating...'
+                : resolved
+                  ? 'Reopen'
+                  : 'Resolve'}
+            </button>
+          </li>
+        );
+      })}
     </ol>
   );
 }

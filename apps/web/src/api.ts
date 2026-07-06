@@ -106,6 +106,16 @@ export function createComment(reviewToken: string, payload: unknown) {
   });
 }
 
+export function updateComment(reviewToken: string, commentId: string, patch: unknown) {
+  return fetchJson<CreateCommentResponse>(
+    `${reviewPath(reviewToken)}/comments/${encodeURIComponent(commentId)}`,
+    {
+      method: 'PATCH',
+      body: JSON.stringify(patch)
+    }
+  );
+}
+
 export function getWorkspace() {
   return fetchJson<WorkspaceResponse>('/api/workspace');
 }

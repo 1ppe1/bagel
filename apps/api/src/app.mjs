@@ -154,7 +154,8 @@ function validateWorkspaceBody(body) {
       !isArtifactType(artifact.type) ||
       typeof artifact.summary !== 'string' ||
       !Number.isInteger(artifact.checksPassed) ||
-      !Number.isInteger(artifact.checksTotal)
+      !Number.isInteger(artifact.checksTotal) ||
+      (artifact.reviewUrl !== undefined && typeof artifact.reviewUrl !== 'string')
     ) {
       return { error: 'invalid_request', message: 'Each artifact needs id, label, file, type, summary, checksPassed, checksTotal.' };
     }
@@ -192,15 +193,21 @@ function validateWorkspaceBody(body) {
   return {
     value: {
       name: body.name,
-      artifacts: body.artifacts.map((artifact) => ({
-        id: artifact.id,
-        label: artifact.label,
-        file: artifact.file,
-        type: artifact.type,
-        summary: artifact.summary,
-        checksPassed: artifact.checksPassed,
-        checksTotal: artifact.checksTotal
-      })),
+      artifacts: body.artifacts.map((artifact) => {
+        const clean = {
+          id: artifact.id,
+          label: artifact.label,
+          file: artifact.file,
+          type: artifact.type,
+          summary: artifact.summary,
+          checksPassed: artifact.checksPassed,
+          checksTotal: artifact.checksTotal
+        };
+        if (artifact.reviewUrl !== undefined) {
+          clean.reviewUrl = artifact.reviewUrl;
+        }
+        return clean;
+      }),
       links: body.links.map((link) => ({ source: link.source, target: link.target })),
       comments: body.comments.map((comment) => ({
         id: comment.id,
@@ -500,17 +507,17 @@ export function createApp(options = {}) {
   app.get('/r/:reviewToken', async (c) => {
     const reviewToken = c.req.param('reviewToken');
     const bundle = storage.getReviewBundle(reviewToken);
-    if (!bundle) {
-      return jsonError(c, 404, 'review_not_found', 'Review token was not found.');
-    }
 
     const index = await readWebDistFile(webDistDir, 'index.html');
     if (!index) {
       return jsonError(c, 503, 'review_app_unavailable', 'Review UI build was not found.');
     }
 
+    // Unknown tokens still get the React app (with a 404 status) so the
+    // browser shows the friendly "Review unavailable" state instead of raw
+    // JSON. The app's own API calls surface the review_not_found error.
     return new Response(index.body, {
-      status: 200,
+      status: bundle ? 200 : 404,
       headers: {
         'content-type': index.contentType,
         'cache-control': 'no-store',

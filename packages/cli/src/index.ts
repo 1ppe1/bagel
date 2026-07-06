@@ -620,6 +620,30 @@ async function readWorkspaceManifest(cwd: string, explicitPath: string | undefin
   );
 }
 
+/**
+ * The server stores only review-token hashes, so it cannot produce /r/ URLs.
+ * The CLI knows its own token: inject reviewUrl into any manifest artifact
+ * whose file matches the artifact this checkout pushes (unless the manifest
+ * already set one).
+ */
+function injectReviewUrls(manifest: unknown, config: LocalConfig | null) {
+  if (!config || !isRecord(manifest) || !Array.isArray(manifest.artifacts)) {
+    return manifest;
+  }
+
+  for (const artifact of manifest.artifacts) {
+    if (
+      isRecord(artifact) &&
+      artifact.file === config.defaultArtifact &&
+      artifact.reviewUrl === undefined
+    ) {
+      artifact.reviewUrl = `/r/${config.reviewToken}`;
+    }
+  }
+
+  return manifest;
+}
+
 async function workspaceCommand(options: {
   cwd: string;
   manifestPath: string | undefined;
@@ -627,7 +651,11 @@ async function workspaceCommand(options: {
   fetchImpl: typeof fetch;
   stdout: (chunk: string) => void;
 }) {
-  const { path, manifest } = await readWorkspaceManifest(options.cwd, options.manifestPath);
+  const { path, manifest: rawManifest } = await readWorkspaceManifest(
+    options.cwd,
+    options.manifestPath
+  );
+  const manifest = injectReviewUrls(rawManifest, await readConfig(options.cwd));
 
   const response = await options.fetchImpl(
     new URL('/api/workspace', normalizeServerUrl(options.serverUrl)).toString(),

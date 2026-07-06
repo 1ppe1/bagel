@@ -467,9 +467,20 @@ function Inspector({
         </section>
       ) : null}
 
-      <button className="inspector-open-btn" type="button">
-        Open artifact →
-      </button>
+      {node.reviewUrl ? (
+        <a className="inspector-open-btn" href={node.reviewUrl}>
+          Open artifact →
+        </a>
+      ) : (
+        <button
+          className="inspector-open-btn"
+          type="button"
+          disabled
+          title="No review has been pushed for this artifact yet."
+        >
+          No review yet
+        </button>
+      )}
     </aside>
   );
 }

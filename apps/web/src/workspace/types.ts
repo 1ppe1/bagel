@@ -21,6 +21,8 @@ export type ArtifactNode = {
   /** Number of automated checks that currently pass. */
   checksPassed: number;
   checksTotal: number;
+  /** Link to the artifact's review (`/r/<token>`), when one exists. */
+  reviewUrl?: string;
 };
 
 export type ArtifactLink = {

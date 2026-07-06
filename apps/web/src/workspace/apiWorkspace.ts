@@ -43,7 +43,8 @@ export function apiWorkspaceToWeb(graph: WorkspaceGraph): Workspace {
       type: artifact.type,
       summary: artifact.summary,
       checksPassed: artifact.checksPassed,
-      checksTotal: artifact.checksTotal
+      checksTotal: artifact.checksTotal,
+      reviewUrl: artifact.reviewUrl
     })),
     links: graph.links.map((link) => ({ source: link.source, target: link.target })),
     comments: graph.comments.map((comment) => ({

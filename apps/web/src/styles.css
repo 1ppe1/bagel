@@ -116,6 +116,15 @@ code {
   text-transform: uppercase;
 }
 
+.eyebrow-link {
+  color: inherit;
+  text-decoration: none;
+}
+
+.eyebrow-link:hover {
+  text-decoration: underline;
+}
+
 .review-meta {
   display: flex;
   flex-wrap: wrap;
@@ -833,16 +842,26 @@ textarea:focus {
 }
 
 .inspector-open-btn {
+  display: block;
   width: 100%;
   margin-top: 4px;
   padding: 10px 14px;
   border-radius: 9px;
+  border: 0;
   color: #fff;
   background: var(--accent);
   font-family: var(--font-ui);
   font-size: 13.5px;
   font-weight: 600;
+  text-align: center;
+  text-decoration: none;
   cursor: pointer;
+}
+
+button.inspector-open-btn:disabled {
+  color: var(--faint);
+  background: #f1f1ef;
+  cursor: not-allowed;
 }
 
 .inspector-open-btn:hover {
@@ -1023,6 +1042,20 @@ a.home-mark {
   font-size: 13px;
   color: var(--ink);
   font-weight: 500;
+}
+
+.sync-demo-badge {
+  margin-left: 6px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #9a6a12;
+  background: var(--amber-bg);
+  border: 1px solid #f0d9a8;
+  padding: 2px 8px;
+  border-radius: 20px;
+  cursor: help;
 }
 
 .sync-topbar-right {
@@ -1470,4 +1503,123 @@ a.home-mark {
     border-right: 0;
     border-bottom: 1px solid var(--line);
   }
+}
+
+/* Reviewer identity + resolve/reopen */
+
+.text-input {
+  width: 100%;
+  border: 1px solid #becdc6;
+  border-radius: 8px;
+  padding: 9px 12px;
+  color: #18201d;
+  background: #ffffff;
+  font: inherit;
+}
+
+.text-input:focus {
+  border-color: #0f766e;
+  outline: 3px solid #b8ebe2;
+}
+
+.comment-author {
+  margin: 0;
+  color: #33413c;
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.comment-item-resolved {
+  opacity: 0.72;
+  background: #f4f6f5;
+}
+
+.resolved-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 26px;
+  padding: 0 9px;
+  border-radius: 999px;
+  color: #448361;
+  background: #edf3ec;
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.comment-resolve-btn {
+  justify-self: start;
+}
+
+/* Home getting-started guide */
+
+.home-guide {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background:
+    radial-gradient(circle at 50% 42%, #ffffff 0%, #fbfbfa 60%, #f6f6f4 100%);
+  overflow-y: auto;
+}
+
+.home-guide-loading {
+  color: var(--faint);
+  font-size: 14px;
+}
+
+.home-guide-card {
+  max-width: 520px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 28px 30px;
+  box-shadow: 0 8px 28px rgba(55, 53, 47, 0.06);
+}
+
+.home-guide-card h1 {
+  margin: 0 0 8px;
+  font-family: var(--font-serif);
+  font-size: 24px;
+  color: var(--ink);
+}
+
+.home-guide-card > p {
+  margin: 0 0 18px;
+  font-size: 14px;
+  line-height: 1.6;
+  color: #56544e;
+}
+
+.home-guide-steps {
+  margin: 0 0 16px;
+  padding-left: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  font-size: 13.5px;
+  color: #56544e;
+}
+
+.home-guide-steps pre {
+  margin: 6px 0 0;
+  padding: 8px 12px;
+  background: #22211d;
+  color: #7bc99a;
+  border-radius: 8px;
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  overflow-x: auto;
+}
+
+.home-guide-demo {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--accent);
+  text-decoration: none;
+}
+
+.home-guide-demo:hover {
+  text-decoration: underline;
 }

@@ -1,14 +1,14 @@
 import { useEffect, useRef, useState } from 'react';
 
 // The AI sync loop screen (Docksync Sync). "Run sync" replays a local
-// `docsync pull` → AI fix → diff → comment-resolution pass, mirroring the
+// `bagel pull` → AI fix → diff → comment-resolution pass, mirroring the
 // Notion design mock. This is a client-side visualization of a local process;
 // no backend calls are made.
 
 type LineClass = 'cmd' | 'dim' | 'warn' | 'ai' | 'ok' | 'done';
 
 const TERM: Array<{ text: string; cls: LineClass }> = [
-  { text: '$ docsync pull', cls: 'cmd' },
+  { text: '$ bagel pull', cls: 'cmd' },
   { text: 'Reading .docsync/context.md …', cls: 'dim' },
   { text: '3 open comments → spec.html', cls: 'warn' },
   { text: 'Resolving related context · 4 files', cls: 'dim' },
@@ -107,6 +107,12 @@ export function SyncLoop() {
           </a>
           <span className="home-sep">/</span>
           <span className="sync-crumb-active">Sync</span>
+          <span
+            className="sync-demo-badge"
+            title="Scripted visualization — not connected to a real sync run yet."
+          >
+            Demo
+          </span>
         </div>
         <div className="sync-topbar-right">
           <div className="sync-version">
@@ -191,12 +197,12 @@ export function SyncLoop() {
                   ))}
                 </div>
                 <div className="sync-push">
-                  <span className="sync-push-cmd">$ docsync push</span>
+                  <span className="sync-push-cmd">$ bagel push</span>
                   <span className="sync-push-note">
                     re-checks pass · {ADD_COUNT} additions across 4 files
                   </span>
-                  <a className="sync-review-btn" href="/r">
-                    Review v4 →
+                  <a className="sync-review-btn" href="/">
+                    Back to workspace →
                   </a>
                 </div>
               </>
@@ -205,7 +211,7 @@ export function SyncLoop() {
                 <div className="sync-idle-mark">⇅</div>
                 <div className="sync-idle-title">Sync review comments back to the artifact</div>
                 <p className="sync-idle-text">
-                  Run <span className="sync-idle-cmd">docsync pull</span> to hand the 3 open comments
+                  Run <span className="sync-idle-cmd">bagel pull</span> to hand the 3 open comments
                   and their context to your local AI. It patches the files and bumps the version.
                 </p>
                 <button type="button" className="sync-run" onClick={runSync} disabled={!idle && running}>

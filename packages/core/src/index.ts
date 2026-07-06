@@ -176,6 +176,10 @@ export type WorkspaceArtifact = {
   summary: string;
   checksPassed: number;
   checksTotal: number;
+  /** Review URL for this artifact (e.g. `/r/<token>`). The server stores only
+   *  token hashes, so the CLI — which knows its own token — injects this when
+   *  pushing the manifest. */
+  reviewUrl?: string;
 };
 
 export type WorkspaceLink = {
