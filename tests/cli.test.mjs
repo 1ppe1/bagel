@@ -438,7 +438,7 @@ describe('docsync CLI task 3', () => {
 
     assert.equal(result.exitCode, 0);
     const context = await readFile(join(workspace, '.docsync', 'context.md'), 'utf8');
-    assert.match(context, /# Docksync Review Context/);
+    assert.match(context, /# Bagel Review Context/);
     assert.match(context, /cmt_open_attached/);
     assert.match(context, /cmt_open_review/);
     assert.match(context, /cmt_open_orphan/);

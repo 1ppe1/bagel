@@ -492,7 +492,7 @@ export function createApp(options = {}) {
 
   app.get('/health', (c) =>
     c.json({
-      service: 'docsync-api',
+      service: 'bagel-api',
       status: 'ok'
     })
   );

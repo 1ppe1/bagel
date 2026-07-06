@@ -11,7 +11,7 @@ export function WorkspaceHome() {
       <header className="home-topbar">
         <div className="home-brand">
           <span className="home-mark">&gt;_</span>
-          <span className="home-name">docksync</span>
+          <span className="home-name">bagel</span>
           <span className="home-sep">/</span>
           <span className="home-workspace">{workspace.name}</span>
         </div>

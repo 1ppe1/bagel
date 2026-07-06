@@ -1,9 +1,11 @@
 {
   "name": "@docsync/cli",
   "version": "0.1.0",
+  "license": "MIT",
   "private": true,
   "type": "module",
   "bin": {
+    "bagel": "./bin/docsync.mjs",
     "docsync": "./bin/docsync.mjs"
   },
   "scripts": {

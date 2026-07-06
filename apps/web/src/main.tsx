@@ -8,7 +8,7 @@ import './styles.css';
 const root = document.getElementById('root');
 
 if (!root) {
-  throw new Error('Docksync review root was not found.');
+  throw new Error('Bagel review root was not found.');
 }
 
 // Route on the current path: `/r/:token` opens a review, `/sync` opens the AI

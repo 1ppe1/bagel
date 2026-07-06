@@ -10,7 +10,7 @@ describe('scaffold', () => {
     });
 
     assert.equal(result.status, 0);
-    assert.match(result.stdout, /Docksync CLI/);
+    assert.match(result.stdout, /bagel CLI/);
     assert.match(result.stdout, /Usage:/);
     assert.match(result.stdout, /push <file\.html>/);
   });
@@ -20,6 +20,6 @@ describe('scaffold', () => {
 
     assert.match(html, /<!doctype html>/i);
     assert.match(html, /data-docsync-id="hero-title"/);
-    assert.match(html, /Docksync/);
+    assert.match(html, /Bagel/);
   });
 });

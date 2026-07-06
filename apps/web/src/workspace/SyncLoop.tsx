@@ -100,7 +100,7 @@ export function SyncLoop() {
           <a className="home-mark" href="/" aria-label="Home">
             &gt;_
           </a>
-          <span className="home-name">docksync</span>
+          <span className="home-name">bagel</span>
           <span className="home-sep">/</span>
           <a className="sync-crumb" href="/">
             new-saas-prd

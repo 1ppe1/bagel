@@ -1,9 +1,11 @@
 {
-  "name": "docsync",
+  "name": "bagel",
   "version": "0.1.0",
+  "license": "MIT",
   "private": true,
   "type": "module",
   "bin": {
+    "bagel": "./packages/cli/bin/docsync.mjs",
     "docsync": "./packages/cli/bin/docsync.mjs"
   },
   "workspaces": [

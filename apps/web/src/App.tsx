@@ -192,7 +192,7 @@ export function App() {
   if (!reviewToken) {
     return (
       <main className="center-state">
-        <h1>Bagle Review</h1>
+        <h1>Bagel Review</h1>
         <p>Open a valid review URL.</p>
       </main>
     );
@@ -201,7 +201,7 @@ export function App() {
   if (loadStatus === 'loading' || loadStatus === 'idle') {
     return (
       <main className="center-state">
-        <h1>Bagle Review</h1>
+        <h1>Bagel Review</h1>
         <p>Loading review...</p>
       </main>
     );
@@ -223,7 +223,7 @@ export function App() {
     <main className="review-shell">
       <header className="topbar">
         <div>
-          <p className="eyebrow">Bagle Review</p>
+          <p className="eyebrow">Bagel Review</p>
           <h1>{details?.review.title ?? 'Review'}</h1>
         </div>
         <div className="review-meta" aria-label="Review metadata">

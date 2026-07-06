@@ -63,13 +63,13 @@ const CONTEXT_FILE = join(DOCSYNC_DIR, 'context.md');
 const DEFAULT_SERVER_URL = 'http://localhost:8787';
 const DEFAULT_ARTIFACT = 'spec.html';
 const MAX_ARTIFACT_BYTES = 2 * 1024 * 1024;
-const DEFAULT_PROJECT_NAME = 'Docksync Review';
-const DEFAULT_PROJECT_TITLE = 'Docksync Review';
+const DEFAULT_PROJECT_NAME = 'Bagel Review';
+const DEFAULT_PROJECT_TITLE = 'Bagel Review';
 
-export const helpText = `Docksync CLI
+export const helpText = `bagel CLI
 
 Usage:
-  docsync <command> [options]
+  bagel <command> [options]
 
 Commands:
   init                 Create a local .docsync configuration.
@@ -393,7 +393,7 @@ function suggestedInstruction(comment: ContextComment) {
 }
 
 function renderContextMarkdown(comments: ContextComment[]) {
-  const lines = ['# Docksync Review Context', '', '## Open Comments', ''];
+  const lines = ['# Bagel Review Context', '', '## Open Comments', ''];
 
   if (comments.length === 0) {
     lines.push('No open comments were found.', '');

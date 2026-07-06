@@ -150,7 +150,7 @@ describe('walking skeleton E2E', () => {
     assert.equal(context.exitCode, 0, context.stderr);
 
     const contextMarkdown = await readFile(join(workspace, '.docsync', 'context.md'), 'utf8');
-    assert.match(contextMarkdown, /# Docksync Review Context/);
+    assert.match(contextMarkdown, /# Bagel Review Context/);
     assert.match(contextMarkdown, /Selector: `\[data-docsync-id="hero-title"\]`/);
     assert.match(contextMarkdown, /Text quote: "Docksync"/);
     assert.match(contextMarkdown, /Heading path: Docksync/);
