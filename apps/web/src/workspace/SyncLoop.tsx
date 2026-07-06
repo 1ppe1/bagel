@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 
-// The AI sync loop screen (Docksync Sync). "Run sync" replays a local
+// The AI sync loop screen. "Run sync" replays a local
 // `bagel pull` → AI fix → diff → comment-resolution pass, mirroring the
 // Notion design mock. This is a client-side visualization of a local process;
 // no backend calls are made.

@@ -18,7 +18,7 @@ serve(
     hostname
   },
   (info) => {
-    console.log(`Docksync API listening on http://${hostname}:${info.port}`);
-    console.log(`Docksync API storage: ${storageFile}`);
+    console.log(`bagel API listening on http://${hostname}:${info.port}`);
+    console.log(`bagel API storage: ${storageFile}`);
   }
 );

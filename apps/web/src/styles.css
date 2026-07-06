@@ -1,5 +1,5 @@
 :root {
-  /* Docksync design system (Notion-like palette + role-based fonts).
+  /* bagel design system (Notion-like palette + role-based fonts).
      Preferred faces are named first; robust system fallbacks keep the app
      offline-friendly and CSP-safe (no external font requests). */
   --font-ui: "Plus Jakarta Sans", Inter, ui-sans-serif, system-ui, -apple-system,
@@ -973,7 +973,7 @@ button.inspector-open-btn:disabled {
 }
 
 /* =========================================================================
-   AI sync loop (Docksync Sync)
+   AI sync loop
    ========================================================================= */
 
 .home-source-mock {

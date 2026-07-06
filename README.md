@@ -1,143 +1,159 @@
-# Docksync
+# bagel
 
-Docksync is a localhost-first review loop for HTML artifacts. It lets a reviewer
-open a local HTML preview in the browser, attach comments to DOM elements, pull
-those comments into local agent context, and keep comments attached across later
-HTML revisions with Anchor Rebase.
+**Turn browser review comments on AI-generated HTML into agent context your local AI can act on.**
 
-The MVP proves this loop:
+bagel is a localhost-first review loop for HTML artifacts (specs, dashboards,
+UI mocks, plans). You publish an artifact, reviewers comment on DOM elements or
+text ranges in the browser — optionally as *fix instructions* — and you pull
+those comments back as structured Markdown context for your coding agent
+(Claude Code, Codex, Cursor, …). When the AI pushes a revised version, Anchor
+Rebase reattaches existing comments to the new DOM.
 
 ```mermaid
 flowchart LR
-    A[push] --> B[browser comment] --> C[pull] --> D[context] --> E[edit] --> F[push v2] --> G[rebase]
+    A[push] --> B[browser comment] --> C[pull] --> D[context.md] --> E[AI edits] --> F[push v2] --> G[anchor rebase]
     G -. next revision .-> B
 ```
 
-## Demo
+![Workspace graph](docs/assets/home-graph.png)
 
-<video src="docs/assets/demoview.mov" controls width="100%"></video>
+## Screens
 
-If the embedded player is unavailable, open the demo video directly:
-[docs/assets/demoview.mov](docs/assets/demoview.mov).
+| Screen | Route | What it does |
+|---|---|---|
+| **Workspace graph** | `/` | Force-directed map of your artifacts: color = type, size = connections, reviewer avatars orbit their artifact. Click a node to inspect it and open its review. |
+| **Review** | `/r/<token>` | The artifact in a sandboxed iframe. Click an element or select text to get an **Add comment** pill; toggle **Fix instruction** to hand the comment to the AI as a change to apply. Comments can be resolved/reopened. A **Relationships** tab shows the artifact's impact scope on the same graph. |
+| **Sync loop** | `/sync` | *Demo:* a scripted replay of `pull → AI patch → v3→v4 diff → comments resolved`. Not yet wired to a real run. |
 
-## Hosted Preview (add-on)
+Select text to comment on exactly what you mean — the quote (with context)
+travels with the comment and survives revisions:
 
-The live demo runs localhost-first (see Quickstart). As an add-on, the same API
-and review UI are also reachable through a public URL, so a reviewer on another
-machine or network can open the review without a local checkout:
-
-```text
-https://bagel.ippei-matsuda.workers.dev/r/bJ3lEcTrOHXKv8qg1ll1umdhKmmpgs7a
-```
-
-Health check: `https://bagel.ippei-matsuda.workers.dev/health`.
-
-The hosted path is a stable `workers.dev` Worker that proxies to the running
-local server, so the public URL stays constant even if the underlying tunnel is
-re-issued. The localhost loop below remains the primary, canonical demo.
-
-## Repository Layout
-
-- `apps/api/` - Hono API server, artifact storage, review routes, and iframe bridge delivery.
-- `apps/web/` - React + Vite review UI.
-- `packages/cli/` - `docsync` CLI for push, pull, and context generation.
-- `packages/core/` - shared contracts, anchor extraction, and Anchor Rebase logic.
-- `examples/` - demo HTML fixtures, including a manual unsafe HTML sample.
-- `docs/` - demo quickstart and operator script.
-- `.docs/` - product, architecture, data model, security, and implementation notes.
-- `context/` - task tracking and execution directives.
+![Text-range pill](docs/assets/review-pill.png)
+![Amber quote](docs/assets/review-quote.png)
 
 ## Requirements
 
 - Node.js 22 or newer
 - npm
-- A browser that can open `http://127.0.0.1:8787`
+- `cloudflared` — only for `bagel share` (remote reviewers)
 
 ## Quickstart
 
-Install dependencies and start the localhost API plus review UI:
-
 ```sh
+git clone https://github.com/1ppe1/bagel.git
+cd bagel
 npm install
-npm run dev
+npm run dev          # API on :8787, web on :5173
 ```
 
-In another terminal, publish the shared demo artifact:
+In another terminal, publish the demo artifact and the workspace graph:
 
 ```sh
-./docsync push examples/spec.html --server http://127.0.0.1:8787
+./bagel push examples/spec.html --server http://127.0.0.1:8787
+./bagel workspace --server http://127.0.0.1:8787
 ```
 
-Open the printed review URL. Add a browser comment, then pull it back into local
-files:
+Open the review URL printed by `push` (or open `http://127.0.0.1:5173/` and
+click the artifact's node). Add a comment — try selecting text and toggling
+**Fix instruction** — then pull it into agent context:
 
 ```sh
-./docsync pull
-./docsync context --open-comments
+./bagel pull
+./bagel context --open-comments
+cat .docsync/context.md
 ```
 
-Open `.docsync/context.md` to see the generated agent context.
+Fix instructions arrive marked for direct application:
 
-For the full demo checklist, see:
+```markdown
+### cmt_… (fix instruction)
 
-- [docs/demo-quickstart.md](docs/demo-quickstart.md)
-- [docs/demo-script.md](docs/demo-script.md)
+- Kind: Fix instruction
+- Selector: `main > h1`
+- Text quote: "Docksync turns review comments into agent context."
+- Fix instruction: Rename the headline to be more concrete
+- Suggested instruction: Apply this change directly to the referenced section, …
+```
+
+Point your coding agent at `.docsync/context.md`, let it edit the HTML, then
+`./bagel push` the new version — open comments are re-anchored (or marked
+`orphaned` when their target disappeared).
+
+## Sharing with remote reviewers
+
+Your artifacts stay on your machine. To let someone on another network review:
+
+```sh
+./bagel share
+```
+
+This starts a [Cloudflare quick tunnel](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/do-more-with-tunnels/trycloudflare/)
+(no account needed) and prints a public `https://…trycloudflare.com` URL plus
+your review URL. Anyone with the link can review; stop sharing with `Ctrl+C`.
+
+What stays protected while sharing:
+
+- Review URLs are unguessable capability tokens (192-bit, stored only as hashes).
+- The workspace manifest can only be overwritten from the local machine —
+  tunneled `POST /api/workspace` requests are rejected.
+- Write endpoints are rate-limited per client IP.
 
 ## CLI
 
-```sh
-./docsync --help
-./docsync init --server http://127.0.0.1:8787
-./docsync push examples/spec.html --server http://127.0.0.1:8787
-./docsync pull
-./docsync context --open-comments
-```
-
-Local state is written under `.docsync/`:
-
-- `.docsync/config.json`
-- `.docsync/comments.json`
-- `.docsync/context.md`
-- `.docsync/api-storage.json`
-
-## Development
-
-Use npm workspaces from the repository root.
-
-```sh
-npm run dev
-npm run dev:api
-npm run dev:web
-npm run build
-npm test
-npm run lint
-```
-
-`npm run lint` currently aliases the build/type-check gate.
-
-## Security Model
-
-Docksync does not render arbitrary artifact HTML directly in React. The review UI
-uses a sandboxed iframe, route-specific CSP, a static bridge script, and CLI
-pre-push checks for obviously unsafe HTML.
-
-Run the manual security smoke check with:
-
-```sh
-./docsync push examples/unsafe-script.html --server http://127.0.0.1:8787
-```
-
-Expected result:
-
 ```text
-Security check failed: Artifact contains a <script> tag.
+bagel init                Create a local .docsync configuration.
+bagel push <file.html>    Publish a single HTML file for review.
+bagel pull                Sync review comments into .docsync/comments.json.
+bagel context             Generate .docsync/context.md for open comments.
+bagel workspace [file]    Push a workspace graph manifest.
+bagel share               Expose the local server through a quick tunnel.
 ```
+
+Local state lives under `.docsync/` (`config.json`, `comments.json`,
+`context.md`, `api-storage.json`). The workspace graph is described by a
+manifest — see [`examples/workspace.json`](examples/workspace.json).
+
+## Security model
+
+bagel treats every artifact as untrusted input, even if you generated it
+yourself:
+
+- Artifacts render only inside a **sandboxed iframe** (`allow-scripts`, opaque
+  origin) behind a strict, nonce-scoped CSP.
+- `push` refuses HTML containing `<script>`, inline event handlers,
+  `javascript:` URLs, or embedded `iframe`/`object`/`form` elements:
+
+  ```sh
+  ./bagel push examples/unsafe-script.html
+  # Security check failed: Artifact contains a <script> tag.
+  ```
+
+- The browser never writes to your filesystem and never runs your AI — the CLI
+  owns all local side effects.
 
 See [.docs/security.md](.docs/security.md) for design notes.
 
-## Current Scope
+## Development
 
-The MVP targets a reliable localhost demo, which remains the primary path. A
-public hosted preview is available as a lightweight add-on (see Hosted Preview).
-Production-grade hosting, SSE, reviewer identity, and resolve/reopen UI remain
-outside the current cut line.
+```sh
+npm run dev        # API + web dev servers
+npm run build      # type-check, web bundle, scaffold check
+npm test           # node --test suite
+```
+
+npm-workspaces monorepo: `apps/api` (Hono), `apps/web` (React + Vite),
+`packages/cli`, `packages/core` (contracts, anchor extraction, Anchor Rebase).
+CI runs build + tests on every push and PR.
+
+## Status & roadmap
+
+Working today: the full localhost loop (push → comment → pull → context →
+re-push with anchor rebase), workspace graph, fix instructions, resolve/reopen,
+remote sharing via quick tunnel.
+
+Planned next: wiring `/sync` to real runs, auto-generating the workspace
+manifest, live comment updates, npm distribution (`npx bagel`).
+
+## License
+
+[MIT](LICENSE)
