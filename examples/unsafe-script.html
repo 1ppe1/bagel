@@ -1,0 +1,13 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>Unsafe Docksync Sample</title>
+  </head>
+  <body>
+    <main>
+      <h1>This file should be rejected by docsync push.</h1>
+      <script>alert('This script must never run in the review iframe.');</script>
+    </main>
+  </body>
+</html>

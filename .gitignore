@@ -1,0 +1,13 @@
+node_modules/
+dist/
+*.tsbuildinfo
+coverage/
+.cache/
+.docsync/
+*.log
+.DS_Store
+
+# Local environment / secrets
+.env
+.env.*
+!.env.example

@@ -1,0 +1,13 @@
+{
+  "name": "@docsync/api",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node src/server.mjs"
+  },
+  "dependencies": {
+    "@hono/node-server": "^2.0.6",
+    "hono": "^4.12.27"
+  }
+}
