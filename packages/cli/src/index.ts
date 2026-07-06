@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto';
+import { spawn } from 'node:child_process';
 import { type Comment, type ContextComment, anchorStatuses, workflowStatuses } from '@docsync/core';
 import { access, mkdir, readFile, rename, writeFile } from 'node:fs/promises';
 import { basename, dirname, join, resolve } from 'node:path';
@@ -77,6 +78,7 @@ Commands:
   pull                 Sync review comments into .docsync/comments.json.
   context              Generate .docsync/context.md for open comments.
   workspace [file]     Push a workspace graph manifest (default .docsync/workspace.json).
+  share                Expose the local server through a Cloudflare quick tunnel.
 
 Options:
   -h, --help           Show this help message.
@@ -677,6 +679,79 @@ async function workspaceCommand(options: {
   return 0;
 }
 
+/** Extract the public trycloudflare URL from cloudflared's log output. */
+export function parseTunnelUrl(line: string) {
+  const match = line.match(/https:\/\/[a-z0-9-]+\.trycloudflare\.com/);
+  return match ? match[0] : null;
+}
+
+const CLOUDFLARED_INSTALL_HINT = `bagel share needs cloudflared (Cloudflare quick tunnel, no account required).
+
+Install it, then rerun:
+  macOS:  brew install cloudflared
+  Other:  https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/downloads/`;
+
+async function shareCommand(options: {
+  cwd: string;
+  serverUrl: string;
+  stdout: (chunk: string) => void;
+  stderr: (chunk: string) => void;
+}) {
+  const serverUrl = normalizeServerUrl(options.serverUrl);
+  const config = await readConfig(options.cwd);
+
+  // Fail with guidance when cloudflared is not installed.
+  const versionOk = await new Promise<boolean>((resolvePromise) => {
+    const probe = spawn('cloudflared', ['--version'], { stdio: 'ignore' });
+    probe.on('error', () => resolvePromise(false));
+    probe.on('exit', (code) => resolvePromise(code === 0));
+  });
+  if (!versionOk) {
+    throw new Error(CLOUDFLARED_INSTALL_HINT);
+  }
+
+  options.stdout(`Starting Cloudflare quick tunnel for ${serverUrl} ...\n`);
+  const tunnel = spawn('cloudflared', ['tunnel', '--url', serverUrl], {
+    stdio: ['ignore', 'pipe', 'pipe']
+  });
+
+  let announced = false;
+  const announce = (chunk: Buffer) => {
+    if (announced) {
+      return;
+    }
+    const url = parseTunnelUrl(chunk.toString());
+    if (!url) {
+      return;
+    }
+    announced = true;
+    options.stdout(`\nShare URL: ${url}\n`);
+    if (config) {
+      options.stdout(`Review URL: ${url}/r/${config.reviewToken}\n`);
+    }
+    options.stdout('\nAnyone with these URLs can open them. Press Ctrl+C to stop sharing.\n');
+  };
+  tunnel.stdout.on('data', announce);
+  tunnel.stderr.on('data', announce);
+
+  const forwardSignal = () => tunnel.kill('SIGINT');
+  process.on('SIGINT', forwardSignal);
+  process.on('SIGTERM', forwardSignal);
+
+  const exitCode = await new Promise<number>((resolvePromise) => {
+    tunnel.on('error', () => resolvePromise(1));
+    tunnel.on('exit', (code) => resolvePromise(code ?? 0));
+  });
+
+  process.off('SIGINT', forwardSignal);
+  process.off('SIGTERM', forwardSignal);
+
+  if (!announced && exitCode !== 0) {
+    options.stderr('cloudflared exited before providing a tunnel URL.\n');
+  }
+  return exitCode;
+}
+
 export async function main(argv: string[] = process.argv.slice(2), runtime: CliRuntime = {}) {
   const cwd = resolve(runtime.cwd ?? process.cwd());
   const env = runtime.env ?? process.env;
@@ -748,6 +823,13 @@ export async function main(argv: string[] = process.argv.slice(2), runtime: CliR
           stdout
         });
       }
+      case 'share':
+        return await shareCommand({
+          cwd,
+          serverUrl,
+          stdout,
+          stderr
+        });
       default:
         throw new Error(`Unknown command: ${command}`);
     }

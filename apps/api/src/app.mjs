@@ -236,6 +236,73 @@ function jsonError(c, status, error, message) {
   return c.json({ error, message }, status);
 }
 
+/**
+ * True when the request hit this server directly from loopback (not through a
+ * tunnel or reverse proxy). Tunnels connect locally but always add forwarding
+ * headers, which is what we key on. Requests without a socket (in-process
+ * tests) count as local.
+ */
+function isLocalDirectRequest(c) {
+  if (
+    c.req.header('cf-connecting-ip') ||
+    c.req.header('x-forwarded-for') ||
+    c.req.header('x-forwarded-host')
+  ) {
+    return false;
+  }
+
+  const address = c.env?.incoming?.socket?.remoteAddress ?? '';
+  return (
+    address === '' ||
+    address === '127.0.0.1' ||
+    address === '::1' ||
+    address === '::ffff:127.0.0.1'
+  );
+}
+
+/**
+ * Minimal fixed-window rate limiter for write endpoints, keyed by client IP.
+ * Protects a tunneled server from comment spam and token brute-forcing.
+ */
+function createWriteRateLimiter({ limit = 120, windowMs = 60_000 } = {}) {
+  const WRITE_METHODS = new Set(['POST', 'PATCH', 'PUT', 'DELETE']);
+  const hits = new Map();
+
+  return async (c, next) => {
+    if (!WRITE_METHODS.has(c.req.method)) {
+      return next();
+    }
+
+    const ip =
+      c.req.header('cf-connecting-ip') ??
+      c.req.header('x-forwarded-for')?.split(',')[0]?.trim() ??
+      c.env?.incoming?.socket?.remoteAddress ??
+      'local';
+
+    const now = Date.now();
+    // Bound memory: drop expired windows once the map grows.
+    if (hits.size > 5000) {
+      for (const [key, entry] of hits) {
+        if (now - entry.start >= windowMs) {
+          hits.delete(key);
+        }
+      }
+    }
+
+    const entry = hits.get(ip);
+    if (!entry || now - entry.start >= windowMs) {
+      hits.set(ip, { start: now, count: 1 });
+      return next();
+    }
+
+    entry.count += 1;
+    if (entry.count > limit) {
+      return jsonError(c, 429, 'rate_limited', 'Too many requests. Try again shortly.');
+    }
+    return next();
+  };
+}
+
 function escapeHtmlAttribute(value) {
   return value
     .replaceAll('&', '&amp;')
@@ -488,6 +555,7 @@ export function createApp(options = {}) {
   const app = new Hono();
 
   app.use('*', secureHeaders());
+  app.use('/api/*', createWriteRateLimiter(options.rateLimit));
   app.use(
     '/api/*',
     bodyLimit({
@@ -813,6 +881,17 @@ export function createApp(options = {}) {
   });
 
   app.post('/api/workspace', async (c) => {
+    // The workspace manifest describes the whole project; only the local CLI
+    // may overwrite it. Tunneled/proxied requests are rejected.
+    if (!isLocalDirectRequest(c)) {
+      return jsonError(
+        c,
+        403,
+        'local_only',
+        'The workspace manifest can only be pushed from the local machine.'
+      );
+    }
+
     const parsed = await readJsonObject(c);
     if (parsed.error) {
       return jsonError(c, 400, parsed.error, 'Expected a JSON object request body.');
