@@ -15,9 +15,11 @@ flowchart LR
     G -. next revision .-> B
 ```
 
-![Workspace graph](docs/assets/home-graph.png)
+![bagel demo — graph → review → text-range comment → fix instruction](docs/assets/bagel-demo.gif)
 
 ## Screens
+
+![Workspace graph](docs/assets/home-graph.png)
 
 | Screen | Route | What it does |
 |---|---|---|
